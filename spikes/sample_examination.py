@@ -5,10 +5,11 @@ import wandb
 from tqdm.auto import tqdm
 
 #%%
+
+#%%
 # Setup a wandb run that will transform data. 
 # This will preserve the data graph and allow us to track the data transformation process
-run = wandb.init(project='gsm8k', job_type='embedding_computation', reinit=True)
-
+run = wandb.init(project='lm-eval-harness-integration', job_type='embedding_computation', reinit=True)
 
 #%% Load the artifact: "blackhc/lm-eval-harness-integration/gsm8k_cot_self_consistency:v2"
 artifact = run.use_artifact('blackhc/lm-eval-harness-integration/gsm8k_cot_self_consistency:v1')
