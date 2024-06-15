@@ -30,7 +30,12 @@ samples_resps_embeddings = pd.read_feather(
 
 # %% Extract all the option.* columns
 options = samples_exploded[
-    ["options.temperature", "options.min_p", "options.top_p"]
+    [
+        col
+        for col in samples_exploded.columns
+        if col.startswith("options.")
+        and not col in ["options.until", "options.do_sample"]
+    ]
 ].drop_duplicates()
 options
 
@@ -51,9 +56,9 @@ wrong_matches_grouped_doc_id = samples_exploded_grouped_exact_match.get_group(
 # %% Iterate over the groups
 import numpy as np
 
+THRESHOLD = 1e-6
 
-def compute_entropy(evs):
-    threshold = 1e-6
+def compute_entropy(evs, threshold):
     clamped_evs = evs[evs > threshold]
     entropy = 0.5 * (
         np.sum(np.log(clamped_evs)) + 0.5 * len(evs) * np.log(2 * np.pi * np.e)
@@ -61,7 +66,16 @@ def compute_entropy(evs):
     return entropy
 
 
-def compute_entropy_for_group(group_by_doc_id):
+def diversity_score(evs, threshold=THRESHOLD):
+    clamped_evs = evs[evs > threshold]
+    entropy_part = 0.5 * np.sum(np.log(clamped_evs))
+    noise_entropy = 0.5 * (
+        np.log(threshold) * len(clamped_evs)
+    )
+    return entropy_part - noise_entropy
+
+
+def compute_diversity_score_for_group(group_by_doc_id):
     doc_id_entropies = {}
     for doc_id, group in tqdm(group_by_doc_id):
         # Skip if group.resps is all empty
@@ -71,17 +85,19 @@ def compute_entropy_for_group(group_by_doc_id):
         resps_embeddings = samples_resps_embeddings.loc[group.resps]
         # Convert to numpy array
         resps_embeddings_numpy = resps_embeddings.to_numpy()
+        # Center by subtracting the mean
+        resps_embeddings_numpy -= np.mean(resps_embeddings_numpy, axis=0)
         # Compute the EVs
         evs = np.linalg.eigvalsh(resps_embeddings_numpy @ resps_embeddings_numpy.T)
-        entropy = compute_entropy(evs)
+        entropy = diversity_score(evs)
         # print(f"Entropy for doc_id {doc_id}: {entropy}")
         doc_id_entropies[doc_id] = entropy
     return doc_id_entropies
 
 
-doc_id_entropies_exact_match = compute_entropy_for_group(exact_matches_grouped_doc_id)
+doc_id_entropies_exact_match = compute_diversity_score_for_group(exact_matches_grouped_doc_id)
 
-doc_id_entropies_wrong_match = compute_entropy_for_group(wrong_matches_grouped_doc_id)
+doc_id_entropies_wrong_match = compute_diversity_score_for_group(wrong_matches_grouped_doc_id)
 
 # %%
 # Plot the sorted entropies
