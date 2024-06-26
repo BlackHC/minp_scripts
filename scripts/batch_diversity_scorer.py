@@ -61,7 +61,8 @@ api = wandb.Api()
 
 #%%
 # Load all runs from project "lm-eval-harness-integration"
-runs = api.runs("menhguin/lm-eval-harness-integration")
+# runs = api.runs("menhguin/lm-eval-harness-integration")
+runs = api.runs("blackhc/lm-eval-harness-integration")
 print(f"Found {len(runs)} runs")
 
 results = {}
@@ -119,9 +120,9 @@ for run in tqdm(list(runs)[::-1], desc="Processing runs"):
                 if used_by_run.jobType == "embedding_computation" and used_by_run.state == "finished":
                     already_processed = True
                     break
-    if not already_processed:
-        print(f"Embedding computation run for {run.name} does not exist (Cache likely cold). Skipping.")
-        continue
+    # if not already_processed:
+    #     print(f"Embedding computation run for {run.name} does not exist (Cache likely cold). Skipping.")
+    #     continue
     if gsm8k_cot_self_consistency_artifact is None:
         print(f"No gsm8k_cot_self_consistency artifact found for run {run.name}. Skipping.")
         continue

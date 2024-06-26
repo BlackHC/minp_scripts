@@ -13,13 +13,13 @@ cache = embedding_cache.EmbeddingCache()
 client = openai.Client()
 model = "text-embedding-3-small"
 
-#%%
 # %%
 api = wandb.Api()
 
 #%%
 # Load all runs from project "lm-eval-harness-integration"
-runs = api.runs("menhguin/lm-eval-harness-integration")
+# runs = api.runs("menhguin/lm-eval-harness-integration")
+runs = api.runs("blackhc/lm-eval-harness-integration")
 print(f"Found {len(runs)} runs")
 # %%
 run: Run
@@ -44,6 +44,9 @@ for run in tqdm(list(runs)[::-1], desc="Processing runs"):
         top_p = run.config["cli_configs"]["gen_kwargs"]["top_p"]
         min_p = run.config["cli_configs"]["gen_kwargs"].get("min_p", None)
         temperature = run.config["cli_configs"]["gen_kwargs"]["temperature"]
+        # if temperature >= 3:
+        #     # Ignore much higher temperatures for now
+        #     continue
     else:
         print(f"Run {run.name} is certainly not a generation run. Skipping.")
         continue
@@ -75,9 +78,9 @@ for run in tqdm(list(runs)[::-1], desc="Processing runs"):
     print("📖 Top-p:", top_p)
     print("📖 Min-p:", min_p)
     print()
-    processor_run = wandb.init(entity="menhguin", project='lm-eval-harness-integration', job_type='embedding_computation', reinit=True, name=f"Embedder: {run.name}",
-                               config={"original_run": run.id, "original_config": run.config, "artiface_name": gsm8k_cot_self_consistency_artifact.name})
-    processor_run.use_artifact(gsm8k_cot_self_consistency_artifact)
+    # processor_run = wandb.init(entity="menhguin", project='lm-eval-harness-integration', job_type='embedding_computation', reinit=True, name=f"Embedder: {run.name}",
+    #                            config={"original_run": run.id, "original_config": run.config, "artiface_name": gsm8k_cot_self_consistency_artifact.name})
+    # processor_run.use_artifact(gsm8k_cot_self_consistency_artifact)
     # Download the artifact
     artifact_dir = gsm8k_cot_self_consistency_artifact.download()
 
@@ -145,20 +148,21 @@ for run in tqdm(list(runs)[::-1], desc="Processing runs"):
 
     computed_embeddings = [item.embedding for item in embedding_results]
     cache.put_batch(embeddings_to_compute, computed_embeddings)
-    # Update resp_embedding_dict
-    resp_embedding_dict.update(dict(zip(embeddings_to_compute, computed_embeddings)))
-    # Turn this into a dataframe
-    resp_embedding_df = pd.DataFrame.from_dict(resp_embedding_dict, orient='index')
-    # Save the embedding df to another feather file
-    resp_embedding_df.to_feather('gsm8k_cot_self_consistency_eval_samples_resps_embeddings.feather')
-    # Create a new artifact to store the transformed data
-    artifact = wandb.Artifact('gsm8k_cot_self_consistency_eval_samples_exploded', type='data')
-    artifact.add_file('gsm8k_cot_self_consistency_eval_samples_exploded.feather')
-    artifact.add_file('gsm8k_cot_self_consistency_eval_samples_resps_embeddings.feather')
-    # Log the artifact
-    processor_run.log_artifact(artifact)
-    # Finish wandb
-    processor_run.finish()
+    if False:
+        # Update resp_embedding_dict
+        resp_embedding_dict.update(dict(zip(embeddings_to_compute, computed_embeddings)))
+        # Turn this into a dataframe
+        resp_embedding_df = pd.DataFrame.from_dict(resp_embedding_dict, orient='index')
+        # Save the embedding df to another feather file
+        resp_embedding_df.to_feather('gsm8k_cot_self_consistency_eval_samples_resps_embeddings.feather')
+        # Create a new artifact to store the transformed data
+        artifact = wandb.Artifact('gsm8k_cot_self_consistency_eval_samples_exploded', type='data')
+        artifact.add_file('gsm8k_cot_self_consistency_eval_samples_exploded.feather')
+        artifact.add_file('gsm8k_cot_self_consistency_eval_samples_resps_embeddings.feather')
+        # Log the artifact
+        processor_run.log_artifact(artifact)
+        # Finish wandb
+        processor_run.finish()
     print(f"✅ Finished processing run {run.name}")
     print()
     print()
