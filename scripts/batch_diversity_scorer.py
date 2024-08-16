@@ -52,10 +52,8 @@ def compute_diversity_score_for_group(samples_resps_embeddings, group_by_doc_id)
 
 #%%
 cache = embedding_cache.EmbeddingCache()
-client = openai.Client()
 model = "text-embedding-3-small"
 
-#%%
 # %%
 api = wandb.Api()
 
@@ -104,7 +102,11 @@ for run in tqdm(list(runs)[::-1], desc="Processing runs"):
     else:
         print(f"Run {run.name} is certainly not a generation run. Skipping.")
         continue
-        
+    
+    if extracted_configs['run_id'] in results:
+        print(f"Run {run.name} has already been processed. Skipping.")
+        continue
+    
     # Processing finished run
     # print(f"Processing run {run.name}...")
     # Check if the job already has a embedding_computation run
@@ -192,8 +194,9 @@ for run in tqdm(list(runs)[::-1], desc="Processing runs"):
     # assert len(embeddings_to_compute) == 0, f"Found {len(embeddings_to_compute)} embeddings to compute"
     # Embed the resps using the model text-embedding-3-small
     # Batch processing of unique_resps
-    batch_size = 2048  # Define the batch size
+    batch_size = 256  # Define the batch size
     embedding_results = []
+    client = openai.Client()
     for i in tqdm(range(0, len(embeddings_to_compute), batch_size)):
         batch = list(embeddings_to_compute[i:i+batch_size])
         # Check if any batch elements are empty
