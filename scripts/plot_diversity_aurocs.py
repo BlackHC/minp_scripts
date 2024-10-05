@@ -17,6 +17,7 @@ df["avg_correct_entropy"] = df["correct_entropy"].apply(lambda x: np.mean(x).ite
 df["avg_wrong_entropy"] = df["wrong_entropy"].apply(lambda x: np.mean(x).item())
 df["is_min_p"] = df["options"].apply(lambda x: x.get("options.min_p") is not None)
 df["error"] = 1.0 - df["accuracy"]
+df["accuracy"] = df["accuracy"] * 100
 #%%
 normalized_options = pd.json_normalize(df["options"])
 normalized_options.index = df.index
@@ -33,7 +34,10 @@ fig, ax = plt.subplots(figsize=(6, 6/1.6))
 
 unique_temperatures = df["options.temperature"].unique()
 temperature_norm = plt.Normalize(unique_temperatures.min(), unique_temperatures.max())
-color_map = plt.cm.viridis
+color_map = plt.cm.plasma
+
+min_p_color = "C2"
+top_p_color = "C7"
 
 
 # def plot_sorted_by_diversity(data, color, label, marker):
@@ -44,6 +48,7 @@ color_map = plt.cm.viridis
 #     ax.plot([], c=color, linestyle='-', label=label, marker=marker)
 
 from scipy.spatial import ConvexHull
+
 
 def plot_data_and_pareto_frontier(data, color, label, marker):
     points = data[["accuracy", "avg_correct_entropy"]].values.astype(float)
@@ -61,8 +66,8 @@ def plot_data_and_pareto_frontier(data, color, label, marker):
     
 for is_min_p, group_df in reversed(list(df.groupby("is_min_p"))):
     marker = 'o' if is_min_p else '^'
-    label = 'Min-p' if is_min_p else 'Top-p'
-    color = 'C0' if is_min_p else 'C1'
+    label = 'min-$p$' if is_min_p else 'top-$p$'
+    color = min_p_color if is_min_p else top_p_color
     level = group_df["options.min_p"] if is_min_p else group_df["options.top_p"]
     
     plot_data_and_pareto_frontier(group_df, color, label, marker)
@@ -72,14 +77,14 @@ for is_min_p, group_df in reversed(list(df.groupby("is_min_p"))):
                          c=group_df["options.temperature"], cmap=color_map, norm=temperature_norm,
                          marker=marker, s=100*level/0.6, alpha=1.0, zorder=10)
      
-ax.set_xlabel("Accuracy")
+ax.set_xlabel("Accuracy (%)")
 ax.set_ylabel("Avg. Entropy of Correct Predictions (\"Creativity\")")
-ax.set_title("Comparison of Min-p and Top-p: Accuracy vs Creativity")
-ax.set_xlim(0.38,0.50)
+# ax.set_title("Comparison of Min-p and Top-p: Accuracy vs Creativity")
+ax.set_xlim(38,48)
 ax.legend(frameon=True)
 # Change the x-axis label to be in percentage
 import matplotlib.ticker as mtick
-ax.xaxis.set_major_formatter(mtick.PercentFormatter(1.0, 0))
+# ax.xaxis.set_major_formatter(mtick.PercentFormatter(1.0, 0))
 
 
 if True:
@@ -92,14 +97,14 @@ if True:
     # Scatter all points in the smaller subplot
     for is_min_p, group_df in df.groupby("is_min_p"):
         marker = 'o' if is_min_p else '^'
-        color = 'C0' if is_min_p else 'C1'
+        color = min_p_color if is_min_p else top_p_color
         level = group_df["options.min_p"] if is_min_p else group_df["options.top_p"]
     
         inset_ax.scatter(group_df["accuracy"], group_df["avg_correct_entropy"],
                         c=color,
                         marker=marker, s=20*level/0.6, alpha=0.7, zorder=10)
 
-    inset_ax.set_xlabel("Accuracy", fontsize=8)
+    inset_ax.set_xlabel("Accuracy (%)", fontsize=8)
     inset_ax.set_ylabel("Avg. Entropy", fontsize=8)
     inset_ax.tick_params(axis='both', which='major', labelsize=8)
 
@@ -117,10 +122,10 @@ if True:
     # Adjust the position of x and y axis labels
     inset_ax.xaxis.set_label_coords(0.5, 0.15)
     inset_ax.yaxis.set_label_coords(0.15, 0.5)
-    inset_ax.xaxis.set_major_formatter(mtick.PercentFormatter(1.0, 0))
+    # inset_ax.xaxis.set_major_formatter(mtick.PercentFormatter(1.0, 0))
     # Disable the grid for inset_ax
-    inset_ax.xaxis.set_major_locator(mtick.MultipleLocator(0.2))
-    inset_ax.xaxis.set_minor_locator(mtick.MultipleLocator(0.05))
+    inset_ax.xaxis.set_major_locator(mtick.MultipleLocator(20))
+    inset_ax.xaxis.set_minor_locator(mtick.MultipleLocator(5))
     inset_ax.yaxis.set_major_locator(mtick.MultipleLocator(100))
     inset_ax.yaxis.set_minor_locator(mtick.MultipleLocator(50))
     inset_ax.grid(True, which='minor', linestyle='--', linewidth=0.5)
